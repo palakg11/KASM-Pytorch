@@ -44,7 +44,7 @@ class LSTMcell(nn.Module):
         hidden state dimension = (batch size X 300); where 300 is hidden state dimension as mentioned in the paper
         
         """
-        
+
         combined = torch.cat((input, hidden_state), axis = 1)
         
         forget_gate = torch.sigmoid(self.i2ft(combined))
@@ -60,9 +60,6 @@ class LSTMcell(nn.Module):
         
         
         return output_state, hidden_state, cell_state
-        
-    def initHidden(self):
-        return torch.zeros(self.batch_size, self.hidden_size)
 
 
 # In[3]:
@@ -95,18 +92,23 @@ class LSTMclassifier(nn.Module):
                        output dimension: (batch_size X 300)
         
         """
-        self.layer1 = nn.Linear(input_size, 100, bias = True) #doubt
-        self.layer2 = nn.Linear(100, output_size, bias = True) #doubt
+        """
+        taking intermediate layer size = 100
+        """
+        self.layer1 = nn.Linear(input_size, 100, bias = True)
+        self.layer2 = nn.Linear(100, output_size, bias = True)
         self.softmax = nn.LogSoftmax(dim=1)
         
     def forward(self, input, max_num_of_words):
         
-        input = self.embedding(input)
+        input = (self.embedding(input)).float()
         
         hidden_state = torch.zeros(self.batch_size, self.hidden_size)
         cell_state = torch.zeros(self.batch_size, self.hidden_size)
         
-        "output is concatenation of all time stamp"
+        """
+        output is concatenation of all time stamp
+        """
         output = torch.zeros((self.batch_size, max_num_of_words, 300))
         if torch.cuda.is_available():
             output = output.cuda()
@@ -192,7 +194,7 @@ class Dataset(object):
         self.wordtoix, self.ixtoword = x[6], x[7]
         del x
         
-        print("load data finished")
+        print("load data finished:", self.data)
 
 
 # In[6]:
@@ -203,6 +205,7 @@ def eval_model(model, data, label, batch_size):
     total_epoch_acc = 0
     loss_fn = nn.NLLLoss()
     model.eval()
+    steps = 0
     
     with torch.no_grad():
         for iter in range(0, len(data), batch_size):
@@ -218,8 +221,9 @@ def eval_model(model, data, label, batch_size):
                 acc = 100.0 * num_corrects/batch_size
                 total_epoch_loss += loss.item()
                 total_epoch_acc += acc.item()
+                steps += 1
     
-    return total_epoch_loss/len(data), total_epoch_acc/len(data)
+    return total_epoch_loss/steps, total_epoch_acc/steps
 
 
 # In[7]:
@@ -232,7 +236,7 @@ def train_model(model, data, label, batch_size, epoch):
     if torch.cuda.is_available():
         model.cuda()
         
-    optim = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()))
+    optim = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
     steps = 0
     loss_fn = nn.NLLLoss()
     model.train()
@@ -260,7 +264,7 @@ def train_model(model, data, label, batch_size, epoch):
             total_epoch_loss += loss.item()
             total_epoch_acc += acc.item()    
     
-    return total_epoch_loss/len(data), total_epoch_acc/len(data)
+    return total_epoch_loss/steps, total_epoch_acc/steps
 
 
 # In[8]:
@@ -269,7 +273,9 @@ def train_model(model, data, label, batch_size, epoch):
 def main():
     
     data = Dataset()
-    data.load_data('yelp_full')
+    data.load_data('dbpedia')
+    from sklearn.utils import shuffle
+    data.train, data.train_lab = shuffle(data.train, data.train_lab)
     data.train = [torch.tensor(x) for x in data.train]
     data.test = [torch.tensor(x) for x in data.test]
     data.val = [torch.tensor(x) for x in data.val]
@@ -277,7 +283,7 @@ def main():
     data.test_lab = torch.tensor([np.argmax(x) for x in data.test_lab], dtype = torch.int64)
     data.val_lab = torch.tensor([np.argmax(x) for x in data.val_lab], dtype = torch.int64)
     
-    batch_size = 128
+    batch_size = 256
     n_hidden = 300
     input_size = 300 #I guess for n-gram it will be n*300
 
@@ -287,28 +293,31 @@ def main():
    
     num_epoch = 10
     for epoch in range(num_epoch):
-        #torch.save(classifier, "epoch.pth")
+
         start_time = time.time()        
         train_loss, train_acc = train_model(classifier, data.train, data.train_lab, batch_size, epoch)
         end_time = time.time()
         elapsed_time = end_time - start_time
         hours, rest = divmod(elapsed_time, 3600)
         minutes, sec = divmod(rest, 60)
-        torch.save(classifier, "lstm1_epoch"+str(epoch+1)+".pth")
+        """
+        Change the path to save the model weights and results
+        """
+        torch.save(classifier, "./checkpoints/dbpedia/lstm1_dbpedia_epoch"+str(epoch+1)+".pth")
 
         val_loss, val_acc = eval_model(classifier, data.val, data.val_lab, batch_size)
-        
-        print(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%')
-        text_file = open("results" + ".txt", "a+")
-        n = text_file.write(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%')
+        test_loss, test_acc = eval_model(classifier, data.test, data.test_lab, batch_size)
+        print(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%,Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
+        text_file = open("results_lstm1_dbpedia" + ".txt", "a+")
+        n = text_file.write(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%,Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
         m = text_file.write("\n")
         text_file.close()
     
-    test_loss, test_acc = eval_model(model, data.test, data.test_lab, batch_size)
-    text_file = open("results" + ".txt", "a+")
-    n = text_file.write(f'Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
-    m = text_file.write("\n")
-    text_file.close()
+    #test_loss, test_acc = eval_model(classifier, data.test, data.test_lab, batch_size)
+    #text_file = open("results" + ".txt", "a+")
+    #n = text_file.write(f'Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
+    #m = text_file.write("\n")
+    #text_file.close()
     
     print(f'Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
 
