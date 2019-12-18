@@ -20,12 +20,11 @@ import torch.nn.functional as F
 
 class LSTMcell(nn.Module):
     
-    def __init__(self, batch_size ,input_size, hidden_size, output_size):
+    def __init__(self,input_size, hidden_size, output_size):
         
         super(LSTMcell, self).__init__()
         
         self.hidden_size = hidden_size
-        self.batch_size = batch_size
         
         """
         LSTM cell basic operations
@@ -59,7 +58,7 @@ class LSTMcell(nn.Module):
         hidden_state = output_state*torch.tanh(cell_state)
         
         
-        return output_state, hidden_state, cell_state
+        return hidden_state, cell_state
 
 
 # In[3]:
@@ -71,12 +70,11 @@ class LSTMclassifier(nn.Module):
     Classification task on LSTM output
     """
     
-    def __init__(self, batch_size ,input_size, hidden_size, output_size, glove_weights):
+    def __init__(self,input_size, hidden_size, output_size, glove_weights):
         
         super(LSTMclassifier, self).__init__()
         
         self.hidden_size = hidden_size
-        self.batch_size = batch_size
         self.labels = output_size
         
         """
@@ -84,40 +82,40 @@ class LSTMclassifier(nn.Module):
         """
         self.embedding = nn.Embedding.from_pretrained(glove_weights)
         
-        self.lstm = LSTMcell(batch_size ,input_size ,hidden_size, output_size)
+        self.lstm = LSTMcell(input_size ,hidden_size, output_size)
         
         """
         Pooling layer: mean pooling across time 
-                       input dimension: (batch_size X max_num_of_words X 300)
-                       output dimension: (batch_size X 300)
+                       pooling layer's input dimension: (batch_size X max_num_of_words X 300)
+                       pooling layer's output dimension: (batch_size X 300)
         
         """
         """
         taking intermediate layer size = 100
         """
-        self.layer1 = nn.Linear(input_size, 100, bias = True)
-        self.layer2 = nn.Linear(100, output_size, bias = True)
+        self.layer1 = nn.Linear(self.hidden_size, 100, bias = True)
+        self.layer2 = nn.Linear(100, self.labels, bias = True)
         self.softmax = nn.LogSoftmax(dim=1)
         
     def forward(self, input, max_num_of_words):
         
         input = (self.embedding(input)).float()
-        
-        hidden_state = torch.zeros(self.batch_size, self.hidden_size)
-        cell_state = torch.zeros(self.batch_size, self.hidden_size)
+        batch_size = input.size()[0]
+        hidden_state = torch.zeros(batch_size, self.hidden_size)
+        cell_state = torch.zeros(batch_size, self.hidden_size)
         
         """
-        output is concatenation of all time stamp
+        output is concatenation of hidden state at all time stamp
         """
-        output = torch.zeros((self.batch_size, max_num_of_words, 300))
+        output = torch.zeros((batch_size, max_num_of_words, 300))
         if torch.cuda.is_available():
             output = output.cuda()
             hidden_state = hidden_state.cuda()
             cell_state = cell_state.cuda()
         
         for i in range(max_num_of_words):
-            output_state, hidden_state, cell_state = self.lstm(input[:,i,:], hidden_state, cell_state)
-            output[:,i,:] = output_state
+            hidden_state, cell_state = self.lstm(input[:,i,:], hidden_state, cell_state)
+            output[:,i,:] = hidden_state
         
         pool = nn.AvgPool2d((max_num_of_words,1), stride=1)
         time_avg_output = torch.squeeze(pool(output))
@@ -209,19 +207,18 @@ def eval_model(model, data, label, batch_size):
     
     with torch.no_grad():
         for iter in range(0, len(data), batch_size):
-            if iter + batch_size < len(data):
-                text = torch.nn.utils.rnn.pad_sequence(data[iter:(iter+batch_size)], batch_first = True)
-                target = label[iter:(iter+batch_size)].long()
-                if torch.cuda.is_available():
-                    text = text.cuda()
-                    target = target.cuda()
-                prediction = model(text, text.size()[1])
-                loss = loss_fn(prediction, target)
-                num_corrects = (torch.max(prediction, 1)[1].view(target.size()).data == target.data).sum()
-                acc = 100.0 * num_corrects/batch_size
-                total_epoch_loss += loss.item()
-                total_epoch_acc += acc.item()
-                steps += 1
+            text = torch.nn.utils.rnn.pad_sequence(data[iter:min((iter+batch_size), len(data))], batch_first = True)
+            target = label[iter:min((iter+batch_size), len(data))].long()
+            if torch.cuda.is_available():
+                text = text.cuda()
+                target = target.cuda()
+            prediction = model(text, text.size()[1])
+            loss = loss_fn(prediction, target)
+            num_corrects = (torch.max(prediction, 1)[1].view(target.size()).data == target.data).sum()
+            acc = 100.0 * num_corrects/min(batch_size, (len(data) - iter))
+            total_epoch_loss += loss.item()
+            total_epoch_acc += acc.item()
+            steps += 1
     
     return total_epoch_loss/steps, total_epoch_acc/steps
 
@@ -242,27 +239,26 @@ def train_model(model, data, label, batch_size, epoch):
     model.train()
     
     for iter in range(0, len(data), batch_size):
-        if iter + batch_size < len(data):
-            text = torch.nn.utils.rnn.pad_sequence(data[iter:(iter+batch_size)], batch_first = True)
-            target = label[iter:(iter+batch_size)].long()
-            if torch.cuda.is_available():
-                text = text.cuda()
-                target = target.cuda()
-            
-            optim.zero_grad()
-            prediction = model(text, text.size()[1])
-            loss = loss_fn(prediction, target)
-            num_corrects = (torch.max(prediction, 1)[1].view(target.size()).data == target.data).sum()
-            acc = 100.0 * num_corrects/batch_size
-            loss.backward()
-            optim.step()
-            steps+=1
-            
-            if steps % 100 == 0:
-                print (f'Epoch: {epoch+1}, Idx: {iter+1}, Training Loss: {loss.item():.4f}, Training Accuracy: {acc.item(): .2f}%')
-            
-            total_epoch_loss += loss.item()
-            total_epoch_acc += acc.item()    
+        text = torch.nn.utils.rnn.pad_sequence(data[iter:min((iter+batch_size), len(data))], batch_first = True)
+        target = label[iter:min((iter+batch_size), len(data))].long()
+        if torch.cuda.is_available():
+            text = text.cuda()
+            target = target.cuda()
+
+        optim.zero_grad()
+        prediction = model(text, text.size()[1])
+        loss = loss_fn(prediction, target)
+        num_corrects = (torch.max(prediction, 1)[1].view(target.size()).data == target.data).sum()
+        acc = 100.0 * num_corrects/min(batch_size, (len(data) - iter))
+        loss.backward()
+        optim.step()
+        steps+=1
+
+        if steps % 100 == 0:
+            print (f'Epoch: {epoch+1}, Idx: {iter+1}, Training Loss: {loss.item():.4f}, Training Accuracy: {acc.item(): .2f}%')
+
+        total_epoch_loss += loss.item()
+        total_epoch_acc += acc.item()    
     
     return total_epoch_loss/steps, total_epoch_acc/steps
 
@@ -273,9 +269,9 @@ def train_model(model, data, label, batch_size, epoch):
 def main():
     
     data = Dataset()
-    data.load_data('dbpedia')
-    from sklearn.utils import shuffle
-    data.train, data.train_lab = shuffle(data.train, data.train_lab)
+    data.load_data('yahoo')
+    #from sklearn.utils import shuffle
+    #data.train, data.train_lab = shuffle(data.train, data.train_lab)
     data.train = [torch.tensor(x) for x in data.train]
     data.test = [torch.tensor(x) for x in data.test]
     data.val = [torch.tensor(x) for x in data.val]
@@ -289,7 +285,7 @@ def main():
 
     W_embd = np.array(cPickle.load(open(data.embpath, 'rb'), encoding = "latin1"))
     W_embd = torch.from_numpy(W_embd)
-    classifier = LSTMclassifier(batch_size ,input_size ,n_hidden, data.num_class, W_embd)
+    classifier = LSTMclassifier(input_size ,n_hidden, data.num_class, W_embd)
    
     num_epoch = 10
     for epoch in range(num_epoch):
@@ -303,12 +299,12 @@ def main():
         """
         Change the path to save the model weights and results
         """
-        torch.save(classifier, "./checkpoints/dbpedia/lstm1_dbpedia_epoch"+str(epoch+1)+".pth")
+        torch.save(classifier, "./checkpoints/yahoo/lstm1_yahoo_epoch"+str(epoch+1)+".pth")
 
         val_loss, val_acc = eval_model(classifier, data.val, data.val_lab, batch_size)
         test_loss, test_acc = eval_model(classifier, data.test, data.test_lab, batch_size)
         print(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%,Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
-        text_file = open("results_lstm1_dbpedia" + ".txt", "a+")
+        text_file = open("results_lstm1_yahoo" + ".txt", "a+")
         n = text_file.write(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%,Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
         m = text_file.write("\n")
         text_file.close()
