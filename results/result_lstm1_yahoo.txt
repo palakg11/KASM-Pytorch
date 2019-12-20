@@ -1,0 +1,13 @@
+Epoch: 01, Time(hr,min): (0.0, 7.0),Train Loss: 1.744, Train Acc: 60.81%, Val. Loss: 1.639041, Val. Acc: 77.06%,Test Loss: 1.672, Test Acc: 74.14%
+Epoch: 02, Time(hr,min): (0.0, 7.0),Train Loss: 1.639, Train Acc: 76.40%, Val. Loss: 1.627860, Val. Acc: 78.28%,Test Loss: 1.661, Test Acc: 75.37%
+Epoch: 03, Time(hr,min): (0.0, 7.0),Train Loss: 1.628, Train Acc: 77.27%, Val. Loss: 1.624482, Val. Acc: 78.70%,Test Loss: 1.657, Test Acc: 75.91%
+Epoch: 04, Time(hr,min): (0.0, 7.0),Train Loss: 1.621, Train Acc: 77.73%, Val. Loss: 1.622838, Val. Acc: 78.86%,Test Loss: 1.655, Test Acc: 76.23%
+Epoch: 05, Time(hr,min): (0.0, 7.0),Train Loss: 1.616, Train Acc: 78.03%, Val. Loss: 1.622131, Val. Acc: 78.97%,Test Loss: 1.654, Test Acc: 76.37%
+Epoch: 06, Time(hr,min): (0.0, 7.0),Train Loss: 1.611, Train Acc: 78.25%, Val. Loss: 1.623160, Val. Acc: 79.02%,Test Loss: 1.654, Test Acc: 76.42%
+Epoch: 07, Time(hr,min): (0.0, 7.0),Train Loss: 1.607, Train Acc: 78.46%, Val. Loss: 1.622384, Val. Acc: 79.02%,Test Loss: 1.653, Test Acc: 76.48%
+Epoch: 08, Time(hr,min): (0.0, 7.0),Train Loss: 1.604, Train Acc: 78.66%, Val. Loss: 1.622638, Val. Acc: 79.01%,Test Loss: 1.654, Test Acc: 76.34%
+Epoch: 09, Time(hr,min): (0.0, 7.0),Train Loss: 1.602, Train Acc: 78.81%, Val. Loss: 1.622283, Val. Acc: 79.09%,Test Loss: 1.653, Test Acc: 76.48%
+Epoch: 10, Time(hr,min): (0.0, 7.0),Train Loss: 1.599, Train Acc: 78.97%, Val. Loss: 1.623495, Val. Acc: 79.08%,Test Loss: 1.654, Test Acc: 76.52%
+Epoch: 11, Time(hr,min): (0.0, 7.0),Train Loss: 1.597, Train Acc: 79.14%, Val. Loss: 1.624150, Val. Acc: 79.10%,Test Loss: 1.655, Test Acc: 76.46%
+Epoch: 12, Time(hr,min): (0.0, 7.0),Train Loss: 1.595, Train Acc: 79.25%, Val. Loss: 1.624817, Val. Acc: 79.15%,Test Loss: 1.655, Test Acc: 76.45%
+Epoch: 13, Time(hr,min): (0.0, 7.0),Train Loss: 1.594, Train Acc: 79.38%, Val. Loss: 1.625104, Val. Acc: 79.09%,Test Loss: 1.655, Test Acc: 76.39%
