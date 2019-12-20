@@ -33,18 +33,18 @@ class LSTMcell(nn.Module):
         LSTM cell basic operations
         """
         self.i2cdasht = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
-        if cell == "RKM-LSTM" or "LSTM":
+        if self.cell == "RKM-LSTM" or self.cell == "LSTM":
             self.i2ft = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
             self.i2it = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
             self.i2o = nn.Linear(input_size+hidden_size, hidden_size, bias=True)
-        if cell == "RKM-CIFG":
+        if self.cell == "RKM-CIFG":
             self.i2ft = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
             self.i2o = nn.Linear(input_size+hidden_size, hidden_size, bias=True)
-        if cell == "Linear-Kernel-wto" or "Gated-CNN":
+        if self.cell == "Linear-Kernel-wto" or self.cell == "Gated-CNN":
             self.i2o = nn.Linear(input_size+hidden_size, hidden_size, bias=True)
-        if cell == "Linear-kernel-wto" or "Linear-Kernel" or "Gated-CNN" or "CNN":
+        if self.cell == "Linear-kernel-wto" or self.cell == "Linear-Kernel" or self.cell == "Gated-CNN" or self.cell == "CNN":
             self.sigmai = 0.5
-        if cell == "Linear-kernel-wto" or "Linear-Kernel":
+        if self.cell == "Linear-kernel-wto" or self.cell == "Linear-Kernel":
             self.sigmaf = 0.5
 
 
@@ -59,33 +59,33 @@ class LSTMcell(nn.Module):
 
         combined = torch.cat((input, hidden_state), axis = 1)
         
-        if self.cell == "LSTM" or "RKM-LSTM" or "RKM-CIFG":
+        if self.cell == "LSTM" or self.cell == "RKM-LSTM" or self.cell == "RKM-CIFG":
             forget_gate = torch.sigmoid(self.i2ft(combined))
-        if self.cell == "LSTM" or "RKM-LSTM":
+        if self.cell == "LSTM" or self.cell == "RKM-LSTM":
             i_t = torch.sigmoid(self.i2it(combined))
         c_dash = self.i2cdasht(combined)
         
         if self.cell == "LSTM":
             cell_state = forget_gate*cell_state + i_t*torch.tanh(c_dash)
         if self.cell == "RKM-LSTM":
-            cell_state = forget_gate*cell_state + i_t*c_dash
+            cell_state = forget_gate*cell_state + i_t*torch.tanh(c_dash)
         if self.cell == "RKM-CIFG":
             cell_state = forget_gate*cell_state + (1 - forget_gate)*c_dash
-        if self.cell == "Linear-kernel-wto" or "Linear-kernel":
+        if self.cell == "Linear-kernel-wto" or self.cell == "Linear-kernel":
             cell_state = self.signmai*c_dash + self.signmaf*cell_state
-        if self.cell == "Gated-CNN" or "CNN":
+        if self.cell == "Gated-CNN" or self.cell == "CNN":
             cell_state = self.signmai*c_dash
         
         """
         IMP: Layer normalization [2] to be performed after the computation of the cell state
         """
-        if self.cell == "LSTM" or "RKM-LSTM" or "RKM-CIFG" or "Linear-Kernel-wto" or "Gated-CNN":
+        if self.cell == "LSTM" or self.cell == "RKM-LSTM" or self.cell == "RKM-CIFG" or self.cell == "Linear-Kernel-wto" or self.cell == "Gated-CNN":
             output_state = torch.sigmoid(self.i2o(combined))
         if self.cell == "LSTM":
             hidden_state = output_state*torch.tanh(cell_state)
-        if self.cell == "RKM-LSTM" or "RKM-CIFG" or "Linear-kernel-wto" or "Gated-CNN":
-            hidden_state = output_state*cell_state
-        if self.cell == "Linear-Kernel" or "CNN":
+        if self.cell == "RKM-LSTM" or self.cell == "RKM-CIFG" or self.cell == "Linear-kernel-wto" or self.cell == "Gated-CNN":
+            hidden_state = output_state*torch.tanh(cell_state)
+        if self.cell == "Linear-Kernel" or self.cell == "CNN":
             hidden_state = torch.tanh(cell_state)
         
         
@@ -300,7 +300,7 @@ def train_model(model, data, label, batch_size, epoch):
 def main(params):
     
     data = Dataset()
-    data.load_data('yahoo')
+    data.load_data(params["data"])
     #from sklearn.utils import shuffle
     #data.train, data.train_lab = shuffle(data.train, data.train_lab)
     data.train = [torch.tensor(x) for x in data.train]
@@ -310,7 +310,10 @@ def main(params):
     data.test_lab = torch.tensor([np.argmax(x) for x in data.test_lab], dtype = torch.int64)
     data.val_lab = torch.tensor([np.argmax(x) for x in data.val_lab], dtype = torch.int64)
     
-    batch_size = 256
+    batch_size = 64
+    if "batch" in params:
+        batch_size = int(params["batch"])
+    print("struture used:", params["cell"])
     n_hidden = 300
     input_size = 300 #I guess for n-gram it will be n*300
 
@@ -318,7 +321,7 @@ def main(params):
     W_embd = torch.from_numpy(W_embd)
     classifier = LSTMclassifier(input_size ,n_hidden, data.num_class, W_embd, params["cell"])
    
-    num_epoch = 10
+    num_epoch = 20
     for epoch in range(num_epoch):
 
         start_time = time.time()        
@@ -330,12 +333,12 @@ def main(params):
         """
         Change the path to save the model weights and results
         """
-        torch.save(classifier, "./checkpoints/yahoo/lstm1_yahoo_epoch"+str(epoch+1)+".pth")
+        torch.save(classifier, "./checkpoints/"+data.data+"/" + params['cell'] +"_epoch"+str(epoch+1)+".pth")
 
         val_loss, val_acc = eval_model(classifier, data.val, data.val_lab, batch_size)
         test_loss, test_acc = eval_model(classifier, data.test, data.test_lab, batch_size)
         print(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%,Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
-        text_file = open("results_lstm1_yahoo" + ".txt", "a+")
+        text_file = open("./result/result_"+ params['cell'] +"lstm1_"+data.data + ".txt", "a+")
         n = text_file.write(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%,Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
         m = text_file.write("\n")
         text_file.close()
