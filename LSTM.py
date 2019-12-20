@@ -10,6 +10,8 @@ import numpy as np
 import pickle as cPickle
 import torch.optim as optim
 import time
+import sys
+from collections import defaultdict
 
 
 # In[2]:
@@ -20,19 +22,30 @@ import torch.nn.functional as F
 
 class LSTMcell(nn.Module):
     
-    def __init__(self,input_size, hidden_size, output_size):
+    def __init__(self,input_size, hidden_size, output_size, cell):
         
         super(LSTMcell, self).__init__()
         
         self.hidden_size = hidden_size
+        self.cell = cell
         
         """
         LSTM cell basic operations
         """
-        self.i2ft = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
-        self.i2it = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
         self.i2cdasht = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
-        self.i2o = nn.Linear(input_size+hidden_size, hidden_size, bias=True)
+        if cell == "RKM-LSTM" or "LSTM":
+            self.i2ft = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
+            self.i2it = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
+            self.i2o = nn.Linear(input_size+hidden_size, hidden_size, bias=True)
+        if cell == "RKM-CIFG":
+            self.i2ft = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
+            self.i2o = nn.Linear(input_size+hidden_size, hidden_size, bias=True)
+        if cell == "Linear-Kernel-wto" or "Gated-CNN":
+            self.i2o = nn.Linear(input_size+hidden_size, hidden_size, bias=True)
+        if cell == "Linear-kernel-wto" or "Linear-Kernel" or "Gated-CNN" or "CNN":
+            self.sigmai = 0.5
+        if cell == "Linear-kernel-wto" or "Linear-Kernel":
+            self.sigmaf = 0.5
 
 
     def forward(self, input, hidden_state, cell_state):
@@ -46,16 +59,34 @@ class LSTMcell(nn.Module):
 
         combined = torch.cat((input, hidden_state), axis = 1)
         
-        forget_gate = torch.sigmoid(self.i2ft(combined))
-        i_t = torch.sigmoid(self.i2it(combined))
-        c_dash = torch.tanh(self.i2cdasht(combined))
-        cell_state = forget_gate*cell_state + i_t*c_dash
+        if self.cell == "LSTM" or "RKM-LSTM" or "RKM-CIFG":
+            forget_gate = torch.sigmoid(self.i2ft(combined))
+        if self.cell == "LSTM" or "RKM-LSTM":
+            i_t = torch.sigmoid(self.i2it(combined))
+        c_dash = self.i2cdasht(combined)
+        
+        if self.cell == "LSTM":
+            cell_state = forget_gate*cell_state + i_t*torch.tanh(c_dash)
+        if self.cell == "RKM-LSTM":
+            cell_state = forget_gate*cell_state + i_t*c_dash
+        if self.cell == "RKM-CIFG":
+            cell_state = forget_gate*cell_state + (1 - forget_gate)*c_dash
+        if self.cell == "Linear-kernel-wto" or "Linear-kernel":
+            cell_state = self.signmai*c_dash + self.signmaf*cell_state
+        if self.cell == "Gated-CNN" or "CNN":
+            cell_state = self.signmai*c_dash
         
         """
         IMP: Layer normalization [2] to be performed after the computation of the cell state
         """
-        output_state = torch.sigmoid(self.i2o(combined))
-        hidden_state = output_state*torch.tanh(cell_state)
+        if self.cell == "LSTM" or "RKM-LSTM" or "RKM-CIFG" or "Linear-Kernel-wto" or "Gated-CNN":
+            output_state = torch.sigmoid(self.i2o(combined))
+        if self.cell == "LSTM":
+            hidden_state = output_state*torch.tanh(cell_state)
+        if self.cell == "RKM-LSTM" or "RKM-CIFG" or "Linear-kernel-wto" or "Gated-CNN":
+            hidden_state = output_state*cell_state
+        if self.cell == "Linear-Kernel" or "CNN":
+            hidden_state = torch.tanh(cell_state)
         
         
         return hidden_state, cell_state
@@ -70,7 +101,7 @@ class LSTMclassifier(nn.Module):
     Classification task on LSTM output
     """
     
-    def __init__(self,input_size, hidden_size, output_size, glove_weights):
+    def __init__(self,input_size, hidden_size, output_size, glove_weights, cell):
         
         super(LSTMclassifier, self).__init__()
         
@@ -82,7 +113,7 @@ class LSTMclassifier(nn.Module):
         """
         self.embedding = nn.Embedding.from_pretrained(glove_weights)
         
-        self.lstm = LSTMcell(input_size ,hidden_size, output_size)
+        self.lstm = LSTMcell(input_size ,hidden_size, output_size, cell)
         
         """
         Pooling layer: mean pooling across time 
@@ -266,7 +297,7 @@ def train_model(model, data, label, batch_size, epoch):
 # In[8]:
 
 
-def main():
+def main(params):
     
     data = Dataset()
     data.load_data('yahoo')
@@ -285,7 +316,7 @@ def main():
 
     W_embd = np.array(cPickle.load(open(data.embpath, 'rb'), encoding = "latin1"))
     W_embd = torch.from_numpy(W_embd)
-    classifier = LSTMclassifier(input_size ,n_hidden, data.num_class, W_embd)
+    classifier = LSTMclassifier(input_size ,n_hidden, data.num_class, W_embd, params["cell"])
    
     num_epoch = 10
     for epoch in range(num_epoch):
@@ -324,7 +355,15 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    
+    d=defaultdict(list)
+    """
+    pass input as --cell=RKM-LSTM
+    """
+    for k, v in ((k.lstrip('-'), v) for k,v in (a.split('=') for a in sys.argv[1:])):
+        d[k] = v
+    
+    main(d)
 
 
 # In[ ]:
