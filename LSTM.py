@@ -68,13 +68,13 @@ class LSTMcell(nn.Module):
         if self.cell == "LSTM":
             cell_state = forget_gate*cell_state + i_t*torch.tanh(c_dash)
         if self.cell == "RKM-LSTM":
-            cell_state = forget_gate*cell_state + i_t*torch.tanh(c_dash)
+            cell_state = forget_gate*cell_state + i_t*(c_dash)
         if self.cell == "RKM-CIFG":
             cell_state = forget_gate*cell_state + (1 - forget_gate)*c_dash
         if self.cell == "Linear-kernel-wto" or self.cell == "Linear-kernel":
-            cell_state = self.signmai*c_dash + self.signmaf*cell_state
+            cell_state = self.sigmai*c_dash + self.sigmaf*cell_state
         if self.cell == "Gated-CNN" or self.cell == "CNN":
-            cell_state = self.signmai*c_dash
+            cell_state = self.sigmai*c_dash
         
         """
         IMP: Layer normalization [2] to be performed after the computation of the cell state
@@ -84,7 +84,7 @@ class LSTMcell(nn.Module):
         if self.cell == "LSTM":
             hidden_state = output_state*torch.tanh(cell_state)
         if self.cell == "RKM-LSTM" or self.cell == "RKM-CIFG" or self.cell == "Linear-kernel-wto" or self.cell == "Gated-CNN":
-            hidden_state = output_state*torch.tanh(cell_state)
+            hidden_state = output_state*(cell_state)
         if self.cell == "Linear-Kernel" or self.cell == "CNN":
             hidden_state = torch.tanh(cell_state)
         
