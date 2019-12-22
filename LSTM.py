@@ -40,11 +40,11 @@ class LSTMcell(nn.Module):
         if self.cell == "RKM-CIFG":
             self.i2ft = nn.Linear(input_size + hidden_size, hidden_size, bias = True)
             self.i2o = nn.Linear(input_size+hidden_size, hidden_size, bias=True)
-        if self.cell == "Linear-Kernel-wto" or self.cell == "Gated-CNN":
+        if self.cell == "Linear-kernel-wto" or self.cell == "Gated-CNN":
             self.i2o = nn.Linear(input_size+hidden_size, hidden_size, bias=True)
-        if self.cell == "Linear-kernel-wto" or self.cell == "Linear-Kernel" or self.cell == "Gated-CNN" or self.cell == "CNN":
+        if self.cell == "Linear-kernel-wto" or self.cell == "Linear-kernel" or self.cell == "Gated-CNN" or self.cell == "CNN":
             self.sigmai = 0.5
-        if self.cell == "Linear-kernel-wto" or self.cell == "Linear-Kernel":
+        if self.cell == "Linear-kernel-wto" or self.cell == "Linear-kernel":
             self.sigmaf = 0.5
 
 
