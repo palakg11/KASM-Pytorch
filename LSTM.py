@@ -80,7 +80,7 @@ class LSTMcell(nn.Module):
         """
         IMP: Layer normalization [2] to be performed after the computation of the cell state
         """
-        if self.cell == "LSTM" or self.cell == "RKM-LSTM" or self.cell == "RKM-CIFG" or self.cell == "Linear-Kernel-wto" or self.cell == "Gated-CNN":
+        if self.cell == "LSTM" or self.cell == "RKM-LSTM" or self.cell == "RKM-CIFG" or self.cell == "Linear-kernel-wto" or self.cell == "Gated-CNN":
             output_state = torch.sigmoid(self.i2o(combined))
         if self.cell == "LSTM":
             hidden_state = output_state*torch.tanh(cell_state)
