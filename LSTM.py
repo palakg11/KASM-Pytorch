@@ -75,6 +75,7 @@ class LSTMcell(nn.Module):
             cell_state = self.sigmai*c_dash + self.sigmaf*cell_state
         if self.cell == "Gated-CNN" or self.cell == "CNN":
             cell_state = self.sigmai*c_dash
+        cell_state = torch.nn.functional.layer_norm(cell_state, cell_state.size()[1:])
         
         """
         IMP: Layer normalization [2] to be performed after the computation of the cell state
@@ -85,7 +86,7 @@ class LSTMcell(nn.Module):
             hidden_state = output_state*torch.tanh(cell_state)
         if self.cell == "RKM-LSTM" or self.cell == "RKM-CIFG" or self.cell == "Linear-kernel-wto" or self.cell == "Gated-CNN":
             hidden_state = output_state*(cell_state)
-        if self.cell == "Linear-Kernel" or self.cell == "CNN":
+        if self.cell == "Linear-kernel" or self.cell == "CNN":
             hidden_state = torch.tanh(cell_state)
         
         
@@ -181,8 +182,8 @@ class Dataset(object):
                 'Family Relationships' ,
                 'Politics Government']
         elif self.data == 'agnews':
-            self.loadpath = "./data/LEAM_dataset/ag_news.p"
-            self.embpath = "./data/LEAM_dataset/ag_news_glove.p"
+            self.loadpath = "../ag_news.p"
+            self.embpath = "../ag_news_glove.p"
             self.num_class = 4
             self.class_name = ['World',
                             'Sports',
@@ -338,7 +339,8 @@ def main(params):
         val_loss, val_acc = eval_model(classifier, data.val, data.val_lab, batch_size)
         test_loss, test_acc = eval_model(classifier, data.test, data.test_lab, batch_size)
         print(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%,Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
-        text_file = open("./result/result_"+ params['cell'] +"lstm1_"+data.data + ".txt", "a+")
+#         text_file = open("./result/result_"+ params['cell'] +"lstm1_"+data.data + ".txt", "a+")
+        text_file = open("result.txt", "a+")
         n = text_file.write(f'Epoch: {epoch+1:02}, Time(hr,min): {hours, minutes},Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%,Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
         m = text_file.write("\n")
         text_file.close()
