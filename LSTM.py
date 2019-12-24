@@ -13,7 +13,6 @@ import time
 import sys
 from collections import defaultdict
 
-
 # In[2]:
 
 
@@ -102,12 +101,13 @@ class LSTMclassifier(nn.Module):
     Classification task on LSTM output
     """
     
-    def __init__(self,input_size, hidden_size, output_size, glove_weights, cell):
+    def __init__(self,input_size, hidden_size, output_size, glove_weights, cell, n_gram):
         
         super(LSTMclassifier, self).__init__()
         
         self.hidden_size = hidden_size
         self.labels = output_size
+        self.n_gram = n_gram
         
         """
         Glove embeddings initialization
@@ -146,7 +146,18 @@ class LSTMclassifier(nn.Module):
             cell_state = cell_state.cuda()
         
         for i in range(max_num_of_words):
-            hidden_state, cell_state = self.lstm(input[:,i,:], hidden_state, cell_state)
+            input_seq = input[:,i,:]
+            
+            """n_gram implementation"""
+            for index in range(1, self.n_gram):
+                if i-index < 0:
+                    input[:,i-index,:] = torch.zeros(batch_size, 300)
+                    if torch.cuda.is_available():
+                        input[:,i-index,:] = input[:,i-index,:].cuda()
+                input_seq = torch.cat((input_seq, input[:,i-index,:]), 1)
+            
+            """"""
+            hidden_state, cell_state = self.lstm(input_seq, hidden_state, cell_state)
             output[:,i,:] = hidden_state
         
         pool = nn.AvgPool2d((max_num_of_words,1), stride=1)
@@ -312,15 +323,18 @@ def main(params):
     data.val_lab = torch.tensor([np.argmax(x) for x in data.val_lab], dtype = torch.int64)
     
     batch_size = 64
+    n_gram = 1
+    if "n_gram" in params:
+        n_gram = int(params["n_gram"])
     if "batch" in params:
         batch_size = int(params["batch"])
     print("struture used:", params["cell"])
     n_hidden = 300
-    input_size = 300 #I guess for n-gram it will be n*300
+    input_size = 300*n_gram 
 
     W_embd = np.array(cPickle.load(open(data.embpath, 'rb'), encoding = "latin1"))
     W_embd = torch.from_numpy(W_embd)
-    classifier = LSTMclassifier(input_size ,n_hidden, data.num_class, W_embd, params["cell"])
+    classifier = LSTMclassifier(input_size ,n_hidden, data.num_class, W_embd, params["cell"], n_gram)
    
     num_epoch = 20
     for epoch in range(num_epoch):
