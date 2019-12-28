@@ -28,6 +28,7 @@ class LSTMCellWrapper(nn.Module):
         cell_state = c_0.view(batch_size,-1)
 
         output = torch.zeros((batch_size, seq_len, self.hidden_size))
+        if 
 
         for i in range(seq_len):
             hidden_state, cell_state = self.lstm(inp[:,i,:], hidden_state, cell_state)
