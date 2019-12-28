@@ -8,7 +8,6 @@ from weight_drop import WeightDrop
 import os
 import sys
 sys.path.append(os.path.dirname(os.getcwd()))
-
 from kernel import LSTMcell
 
 class LSTMCellWrapper(nn.Module):
@@ -26,10 +25,13 @@ class LSTMCellWrapper(nn.Module):
         inp = inp.view(batch_size, seq_len, -1)
         hidden_state = h_0.view(batch_size,-1)
         cell_state = c_0.view(batch_size,-1)
+        if torch.cuda.is_available():
+            inp = inp.cuda()
+            hidden_state = hidden_state.cuda()
+            cell_state = cell_state.cuda()
 
-        output = torch.zeros((batch_size, seq_len, self.hidden_size))
-        if 
-
+        output = torch.zeros((batch_size, seq_len, self.hidden_size)).cuda()
+	
         for i in range(seq_len):
             hidden_state, cell_state = self.lstm(inp[:,i,:], hidden_state, cell_state)
             output[:,i,:] = hidden_state
@@ -107,6 +109,7 @@ class RNNModel(nn.Module):
         raw_outputs = []
         outputs = []
         for l, rnn in enumerate(self.rnns):
+            #print(raw_output.is_cuda)
             current_input = raw_output
             raw_output, new_h = rnn(raw_output, hidden[l])
             new_hidden.append(new_h)
