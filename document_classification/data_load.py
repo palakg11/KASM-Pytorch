@@ -25,8 +25,8 @@ class Dataset(object):
                 'Family Relationships' ,
                 'Politics Government']
         elif self.data == 'agnews':
-            self.loadpath = "../ag_news.p"
-            self.embpath = "../ag_news_glove.p"
+            self.loadpath = "./data/LEAM_dataset/ag_news.p"
+            self.embpath = "./data/LEAM_dataset/ag_news_glove.p"
             self.num_class = 4
             self.class_name = ['World',
                             'Sports',
