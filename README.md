@@ -27,7 +27,7 @@ Considering the below tables, we can conclude that our observed training accurac
 
 
 <img  src="agnews.png"  width="900"/>
-<img  src="DBpedia.png"  width="900"/>
+<img  src="DBPedia.png"  width="900"/>
 
 <img  src="yahoo.png"  width="900"/>
 
