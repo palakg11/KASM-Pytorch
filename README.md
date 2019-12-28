@@ -40,8 +40,13 @@ Considering the below tables, we can conclude that our observed training accurac
 
 
 
+<<<<<<< HEAD
 <img align=center src="agnews.png"  width="700"/>
 <img align=center src="DBPedia.png"  width="700"/>
+=======
+<img  src="agnews.png"  width="900"/>
+<img  src="DBPedia.png"  width="900"/>
+>>>>>>> f69cbebc468127e1d8d99a24523681c18b04cc04
 
 <img align=center src="yahoo.png"  width="700"/>
 
