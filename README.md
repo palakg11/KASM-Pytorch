@@ -2,6 +2,8 @@
 
 Reproducing the paper "Kernel-Based Approaches for Sequence Modeling: Connections to Neural Methods"
 [Link to orignal paper](https://arxiv.org/pdf/1910.04233.pdf)
+<br/>
+Reproducibility Report: [NeurIPS reproducibility report](https://raw.githubusercontent.com/palakg11/KASM-Pytorch/master/NeurIPS_reproducibility_report.pdf)
   
 
 ## Introduction
@@ -12,14 +14,27 @@ The property of Deep Learning (DL), which says that deep learning can be viewed 
 ## Set Up
 - Clone the repository.
 - Make sure the PyTorch version is `1.3.1`
+## Project Structure
+The skeletal overview of the project is as follows: 
+
+```bash
+.
+├── document_classification/
+│   ├── data_load.py  # To load the dataset required for this experiment 
+│   └── model.py     # LSTM classifier model
+├── langauge_modeling/
+│   ├── main.py # A script to run the experiments for language modeling
+├── kernel.py # Code for all variations of LSTM i.e RKM-LSTM, RKM-CIFG, etc. 
+.
+```
 ### For Language Modeling Type :
 - `cd languge_modeling`
-- Run `Python3 main.py --model=”RKM-LSTM”` , This will run the model for the penn tree bank dataset.
+- Run `Python3 main.py --model=”RKM-LSTM”`, This will run the model for the penn tree bank dataset.
 - To save the results run `Python3 main.py --model=”RKM-LSTM”  > result.txt`
 
 ### For Document Classification :
 - `cd document classification`
-- Make 3 directories `checkpoints`, `results` and `data` . Download [this](https://drive.google.com/drive/folders/1QmZfoKSgZl8UMN8XenAYqHaRzbW5QA26) in `data` folder of Document Classification.
+- Make 3 directories `checkpoints`, `results` and `data`. Download [this](https://drive.google.com/drive/folders/1QmZfoKSgZl8UMN8XenAYqHaRzbW5QA26) in `data` folder of Document Classification.
 - Then run `python3 model.py --cell=RKM-LSTM --data=agnews --batch=64 --n_gram=1 --num_epoch=64`
 - All the checkpoints will be stored in the checkpoints folder and results in the result folder
 
@@ -49,15 +64,18 @@ Considering the below tables, we can conclude that our observed training accurac
 
 ## References 
 
-<!-- Original work by authors:
+Original work by authors:
 ```bash
-@article{Padam,
-  title={Kernel-Based Approaches for Sequence Modeling:Connections to Neural Methods},
-  author={Kevin J Liang, Guoyin Wang, Yitong Li, Ricardo Henao, Lawrence Carin},
-  journal={arXiv preprint  	arXiv:1910.04233},
-  year={2019}
+@misc{liang2019kernelbased,
+    title={Kernel-Based Approaches for Sequence Modeling: Connections to Neural Methods},
+    author={Kevin J Liang and Guoyin Wang and Yitong Li and Ricardo Henao and Lawrence Carin},
+    year={2019},
+    eprint={1910.04233},
+    archivePrefix={arXiv},
+    primaryClass={stat.ML}
 }
-``` -->
+```
+
 ## Contributors
 
 - [@palakg11](https://github.com/palakg11)
